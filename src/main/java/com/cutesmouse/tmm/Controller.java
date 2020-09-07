@@ -11,6 +11,7 @@ import com.sun.jna.platform.win32.WinUser;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
 import javax.swing.*;
 
 /**
@@ -30,6 +31,37 @@ public class Controller extends JFrame {
 
     public JList getWindowsList() {
         return Windows;
+    }
+
+    public void update() {
+        Update(null);
+    }
+
+    private void Cancel(ActionEvent e) {
+        Object select = Windows.getSelectedValue();
+        if (select == null) return;
+        ListData<WinDef.HWND> data = (ListData<WinDef.HWND>) select;
+        User32.INSTANCE.SetWindowPos(data.getItem(),new WinDef.HWND(Pointer.createConstant(-2)),0,0,0,0, WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE);
+    }
+
+    private void Update(ActionEvent e) {
+        User32 api = User32.INSTANCE;
+        ArrayList<ListData<WinDef.HWND>> datas = new ArrayList<>();
+        api.EnumWindows((hwnd,pointer) -> {
+            char WinName[];
+            int nameLength;
+            nameLength = api.GetWindowTextLength(hwnd);
+            WinName = new char[nameLength+1];
+            api.GetWindowText(hwnd,WinName,nameLength+1);
+            String Name = new String(WinName);
+            Name = Name.substring(0,Name.length()-1);
+            if (Name.isEmpty()) return true;
+            if (Name.equals("Default IME")) return true;
+            if (Name.equals("MSCTFIME UI")) return true;
+            datas.add(new ListData<>(hwnd,Name));
+            return true;
+        },null);
+        this.getWindowsList().setListData(datas.toArray());
     }
 
     private void initComponents() {
@@ -64,11 +96,13 @@ public class Controller extends JFrame {
 
         //---- button2 ----
         button2.setText("\u53d6\u6d88");
+        button2.addActionListener(e -> Cancel(e));
         contentPane.add(button2);
         button2.setBounds(585, 75, 160, 45);
 
         //---- button3 ----
         button3.setText("\u66f4\u65b0");
+        button3.addActionListener(e -> Update(e));
         contentPane.add(button3);
         button3.setBounds(585, 125, 160, 45);
 
