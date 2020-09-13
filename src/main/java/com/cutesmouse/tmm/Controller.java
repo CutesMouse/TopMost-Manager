@@ -12,6 +12,7 @@ import com.sun.jna.platform.win32.WinUser;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 import javax.swing.*;
 
 /**
@@ -43,25 +44,36 @@ public class Controller extends JFrame {
         ListData<WinDef.HWND> data = (ListData<WinDef.HWND>) select;
         User32.INSTANCE.SetWindowPos(data.getItem(),new WinDef.HWND(Pointer.createConstant(-2)),0,0,0,0, WinUser.SWP_NOMOVE | WinUser.SWP_NOSIZE);
     }
-
-    private void Update(ActionEvent e) {
+    private ArrayList<ListData<WinDef.HWND>> getNowHWNDS() {
         User32 api = User32.INSTANCE;
         ArrayList<ListData<WinDef.HWND>> datas = new ArrayList<>();
-        api.EnumWindows((hwnd,pointer) -> {
+        api.EnumWindows((hwnd, pointer) -> {
             char WinName[];
             int nameLength;
             nameLength = api.GetWindowTextLength(hwnd);
-            WinName = new char[nameLength+1];
-            api.GetWindowText(hwnd,WinName,nameLength+1);
+            WinName = new char[nameLength + 1];
+            api.GetWindowText(hwnd, WinName, nameLength + 1);
             String Name = new String(WinName);
-            Name = Name.substring(0,Name.length()-1);
+            Name = Name.substring(0, Name.length() - 1);
             if (Name.isEmpty()) return true;
             if (Name.equals("Default IME")) return true;
             if (Name.equals("MSCTFIME UI")) return true;
-            datas.add(new ListData<>(hwnd,Name));
+            datas.add(new ListData<>(hwnd, Name));
             return true;
-        },null);
-        this.getWindowsList().setListData(datas.toArray());
+        }, null);
+        return datas;
+    }
+    private ArrayList<ListData<WinDef.HWND>> last = new ArrayList<>();
+    private void Update(ActionEvent e) {
+        ArrayList<ListData<WinDef.HWND>> now = getNowHWNDS();
+        last = now;
+        this.getWindowsList().setListData(now.toArray());
+    }
+
+    private void checkAndUpdate(ActionEvent e) {
+        ArrayList<ListData<WinDef.HWND>> now = getNowHWNDS();
+        getWindowsList().setListData(new ArrayList<>(now.stream().filter(p -> !last.contains(p)).collect(Collectors.toList())).toArray());
+        last = now;
     }
 
     private void initComponents() {
@@ -71,10 +83,12 @@ public class Controller extends JFrame {
         button1 = new JButton();
         button2 = new JButton();
         button3 = new JButton();
+        button4 = new JButton();
 
         //======== this ========
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setTitle("TopMost \u8996\u7a97\u7f6e\u9802\u795e\u5668");
+        setIconImage(new ImageIcon(getClass().getResource("/icon.png")).getImage());
         Container contentPane = getContentPane();
         contentPane.setLayout(null);
 
@@ -106,6 +120,12 @@ public class Controller extends JFrame {
         contentPane.add(button3);
         button3.setBounds(585, 125, 160, 45);
 
+        //---- button4 ----
+        button4.setText("\u66f4\u65b0\u4e26\u7be9\u9078");
+        button4.addActionListener(e -> checkAndUpdate(e));
+        contentPane.add(button4);
+        button4.setBounds(585, 180, 160, 45);
+
         contentPane.setPreferredSize(new Dimension(765, 475));
         pack();
         setLocationRelativeTo(getOwner());
@@ -118,5 +138,6 @@ public class Controller extends JFrame {
     private JButton button1;
     private JButton button2;
     private JButton button3;
+    private JButton button4;
     // JFormDesigner - End of variables declaration  //GEN-END:variables
 }
